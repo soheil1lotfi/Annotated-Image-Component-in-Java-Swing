@@ -1,16 +1,19 @@
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class GalleryWindow extends javax.swing.JFrame {
     private JLabel statusBar;
     // I had an idea to put a border around the panel to see if it reacts correctly to resizes and checked the how-to of
     // making borders here: https://docs.oracle.com/javase/tutorial/uiswing/components/border.html
     private final Border blueline = BorderFactory.createLineBorder(Color.blue);
-
+    public PhotoComponent photoComponent;
     public GalleryWindow() {
 
 //        var mainWindow = new JFrame("Gallery");
@@ -170,12 +173,29 @@ public class GalleryWindow extends javax.swing.JFrame {
 
             JFileChooser chooser = new JFileChooser();
             FileNameExtensionFilter filter = new FileNameExtensionFilter(
-                    "JPG & GIF Images", "jpg", "gif");
+                    "Image Files", "jpg", "jpeg", "png");
             chooser.setFileFilter(filter);
             int returnVal = chooser.showOpenDialog(getParent());
             if(returnVal == JFileChooser.APPROVE_OPTION) {
-                System.out.println("You chose to open this file: " +
-                        chooser.getSelectedFile().getName());
+                try {
+                    // Load the image
+                    BufferedImage image = ImageIO.read(chooser.getSelectedFile());
+
+                    // Create new PhotoComponent with the image
+                    photoComponent = new PhotoComponent();
+                    photoComponent.setPhoto(image);
+
+                    // Update the scroll pane
+                    Component center = ((BorderLayout)getContentPane().getLayout())
+                            .getLayoutComponent(BorderLayout.CENTER);
+                    if (center instanceof JScrollPane) {
+                        ((JScrollPane)center).setViewportView(photoComponent);
+                    }
+
+                    statusBarMessage("Loaded: " + chooser.getSelectedFile().getName());
+                } catch (IOException ex) {
+                    statusBarMessage("Error loading image: " + ex.getMessage());
+                }
             }
         });
 

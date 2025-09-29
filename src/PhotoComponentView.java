@@ -4,7 +4,12 @@ import java.awt.image.BufferedImage;
 public class PhotoComponentView {
 
     public void paint(Graphics pen, PhotoComponent photoComponent) {
+
         Graphics2D pen2 = (Graphics2D) pen;
+        pen2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        pen2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         var model = photoComponent.getModel();
         pen.setColor(photoComponent.getBackgroundColor());
@@ -83,14 +88,92 @@ public class PhotoComponentView {
         g.drawRect(0, 0, width - 1, height - 1);
 
         // Draw all annotations
-//        drawStrokes(g, model);
-//        drawTextBlocks(g, model);
+        drawStrokes(g, model);
+        drawTextBlocks(g, model);
 
-        // Draw current text cursor if applicable
-//        if (model.getCurrentTextBlock() != null &&
-//                model.getCurrentTextBlock().getText().isEmpty()) {
-//            drawTextCursor(g, model.getCurrentTextBlock().position);
-//        }
+//         Draw current text cursor if applicable
+        if (model.getCurrentTextBlock() != null &&
+                model.getCurrentTextBlock().getText().isEmpty()) {
+            drawTextCursor(g, model.getCurrentTextBlock().position);
+        }
+    }
+    // Draw all strokes
+    private void drawStrokes(Graphics2D g, PhotoComponentModel model) {
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(2.0f,
+                BasicStroke.CAP_ROUND,
+                BasicStroke.JOIN_ROUND));
+
+        for (PhotoComponentModel.Stroke stroke : model.getStrokes()) {
+            if (stroke.points.size() < 2) continue;
+
+            Point prev = stroke.points.get(0);
+            for (int i = 1; i < stroke.points.size(); i++) {
+                Point curr = stroke.points.get(i);
+                g.drawLine(prev.x, prev.y, curr.x, curr.y);
+                prev = curr;
+            }
+        }
     }
 
+    // Draw all text blocks with word wrapping
+    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model) {
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        FontMetrics fm = g.getFontMetrics();
+
+        for (PhotoComponentModel.TextBlock block : model.getTextBlocks()) {
+            drawTextBlockWithWrap(g, block, fm, model.getPhotoWidth());
+        }
+    }
+    // Draw a single text block with word wrapping
+    private void drawTextBlockWithWrap(Graphics2D g,
+                                       PhotoComponentModel.TextBlock block,
+                                       FontMetrics fm,
+                                       int maxWidth) {
+        String text = block.getText();
+        if (text.isEmpty()) return;
+
+        int x = block.position.x;
+        int y = block.position.y;
+        int lineHeight = fm.getHeight();
+
+        // Split text into words, keeping spaces
+        String[] words = text.split("(?<=\\s)|(?=\\s)");
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : words) {
+            String testLine = currentLine.toString() + word;
+            int lineWidth = fm.stringWidth(testLine);
+
+            // Check if we need to wrap
+            if (x + lineWidth > maxWidth && currentLine.length() > 0) {
+                // Draw current line
+                g.drawString(currentLine.toString(), x, y);
+
+                // Move to next line
+                y += lineHeight;
+                x = 10; // Small left margin for wrapped lines
+                currentLine = new StringBuilder(word);
+            } else {
+                currentLine.append(word);
+            }
+
+            // Check if we've gone past bottom of photo
+            if (y > block.position.y + 500) { // Reasonable limit
+                break;
+            }
+        }
+
+        // Draw any remaining text
+        if (currentLine.length() > 0 && y < block.position.y + 500) {
+            g.drawString(currentLine.toString(), x, y);
+        }
+    }
+
+    // Draw text insertion cursor
+    private void drawTextCursor(Graphics2D g, Point position) {
+        g.setColor(Color.BLACK);
+        g.drawLine(position.x, position.y - 10, position.x, position.y + 2);
+    }
 }
