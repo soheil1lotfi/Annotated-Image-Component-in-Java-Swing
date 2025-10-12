@@ -16,22 +16,17 @@ public class PhotoComponentModel {
     private Stroke currentStroke = null;
     private TextBlock currentTextBlock = null;
 
-    public PhotoComponentModel(String file) {
-        try {
-            image = ImageIO.read(new File(file));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public PhotoComponentModel() {
+        this.image = null;
     }
 
 
-    // Inner class for drawn strokes
     public static class Stroke {
         public List<Point> points = new ArrayList<>();
         public Color color = Color.BLACK;
 
         public void addPoint(Point p) {
-            points.add(new Point(p)); // Create copy to avoid reference issues
+            points.add(new Point(p));
         }
 
         public boolean isEmpty() {
@@ -43,13 +38,12 @@ public class PhotoComponentModel {
         }
     }
 
-    // Inner class for text annotations
     public static class TextBlock {
         public Point position;
         public StringBuilder text = new StringBuilder();
 
         public TextBlock(Point pos) {
-            this.position = new Point(pos); // Create copy
+            this.position = new Point(pos);
         }
 
         public void addCharacter(char c) {
@@ -65,7 +59,6 @@ public class PhotoComponentModel {
         }
     }
 
-    // Stroke management methods
     public List<Stroke> getStrokes() {
         return strokes;
     }
@@ -86,11 +79,7 @@ public class PhotoComponentModel {
         currentStroke = null;
     }
 
-    public Stroke getCurrentStroke() {
-        return currentStroke;
-    }
 
-    // Text management methods
     public List<TextBlock> getTextBlocks() {
         return textBlocks;
     }

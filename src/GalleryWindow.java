@@ -13,7 +13,11 @@ public class GalleryWindow extends javax.swing.JFrame {
     // I had an idea to put a border around the panel to see if it reacts correctly to resizes and checked the how-to of
     // making borders here: https://docs.oracle.com/javase/tutorial/uiswing/components/border.html
     private final Border blueline = BorderFactory.createLineBorder(Color.blue);
-    public PhotoComponent photoComponent;
+
+    public PhotoComponent photoComponent = null;
+    private JPanel emptyPanel;
+    private JScrollPane scrollPane;
+
     public GalleryWindow() {
 
 //        var mainWindow = new JFrame("Gallery");
@@ -22,28 +26,44 @@ public class GalleryWindow extends javax.swing.JFrame {
         setSize( 800, 600);
         setMinimumSize(new Dimension(400, 400));
 
+        initializeComponents();
 
-        addMenu();
         addStatusBar();
         addTabs();
+        addMenu();
         addCenterPanel();
 
 
     }
+    private void initializeComponents() {
+        emptyPanel = new JPanel();
+        emptyPanel.setBorder(blueline);
+        emptyPanel.setBackground(Color.LIGHT_GRAY);
+
+        JLabel label = new JLabel("No photo loaded. Use File → Import to load a photo.");
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        emptyPanel.add(label);
+
+        scrollPane = new JScrollPane(emptyPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+    }
 
     public void addCenterPanel() {
-        var panel = new JPanel();
-        panel.setBorder(blueline);
+//        var panel = new JPanel();
+//        panel.setBorder(blueline);
+//
+//        // I wanted to see if the wheels are there :)
+//        JLabel label = new JLabel("Just tryna see if I have gotten the scrollables or not");
+//        label.setPreferredSize(new Dimension(1200, 800));
+//        label.setHorizontalAlignment(SwingConstants.CENTER);
+//        panel.add(label);
+//
+//        JScrollPane scrollFrame = new JScrollPane(panel);
+//        scrollFrame.setPreferredSize(new Dimension( 3000,3000));
+//        add(scrollFrame, BorderLayout.CENTER);
+        add(scrollPane, BorderLayout.CENTER);
 
-        // I wanted to see if the wheels are there :)
-        JLabel label = new JLabel("Just tryna see if I have gotten the scrollables or not");
-        label.setPreferredSize(new Dimension(1200, 800));
-        label.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(label);
-
-        JScrollPane scrollFrame = new JScrollPane(panel);
-        scrollFrame.setPreferredSize(new Dimension( 3000,3000));
-        add(scrollFrame, BorderLayout.CENTER);
     }
 
     public void statusBarMessage(String message) {
@@ -129,23 +149,9 @@ public class GalleryWindow extends javax.swing.JFrame {
             }
         });
 
-        menuView.addMenuListener(new MenuListener() {
-            @Override
-            public void menuDeselected(MenuEvent e) {
 
-            }
 
-            @Override
-            public void menuCanceled(MenuEvent e) {
 
-            }
-
-            @Override
-            public void menuSelected(MenuEvent e) {
-                System.out.println("View menu opened");
-                statusBarMessage("View menu opened");
-            }
-        });
         menuViewItem1.addActionListener(e -> {
             statusBarMessage("Photo viewer selected");
         });
@@ -166,6 +172,7 @@ public class GalleryWindow extends javax.swing.JFrame {
             System.exit(0);
         });
 
+
         menuFileItem1.addActionListener(e -> {
             //From the doc: https://docs.oracle.com/javase/8/docs/api/javax/swing/JFileChooser.html
 
@@ -178,16 +185,12 @@ public class GalleryWindow extends javax.swing.JFrame {
             int returnVal = chooser.showOpenDialog(getParent());
             if(returnVal == JFileChooser.APPROVE_OPTION) {
                 try {
-                    // Load the image
                     BufferedImage image = ImageIO.read(chooser.getSelectedFile());
 
-                    // Create new PhotoComponent with the image
                     photoComponent = new PhotoComponent();
                     photoComponent.setPhoto(image);
 
-                    // Update the scroll pane
-                    Component center = ((BorderLayout)getContentPane().getLayout())
-                            .getLayoutComponent(BorderLayout.CENTER);
+                    Component center = ((BorderLayout)getContentPane().getLayout()).getLayoutComponent(BorderLayout.CENTER);
                     if (center instanceof JScrollPane) {
                         ((JScrollPane)center).setViewportView(photoComponent);
                     }
@@ -198,6 +201,25 @@ public class GalleryWindow extends javax.swing.JFrame {
                 }
             }
         });
+        menuFileItem2.addActionListener(e -> {
+
+            if (photoComponent != null) {
+                // Dialogue to confirm
+                int result = JOptionPane.showConfirmDialog(this,
+                        "Delete the current photo and all annotations?",
+                        "Confirm Delete",
+                        JOptionPane.YES_NO_OPTION);
+
+                if (result == JOptionPane.YES_OPTION) {
+                    photoComponent = null;
+
+                    scrollPane.setViewportView(emptyPanel);
+
+                    statusBarMessage("Photo deleted");
+                }
+            }
+        });
+
 
 
         ButtonGroup GroupMenuFileItem = new ButtonGroup();
@@ -215,5 +237,8 @@ public class GalleryWindow extends javax.swing.JFrame {
         setJMenuBar(menuBar);
 
         add(mainPanel, BorderLayout.CENTER);
+
+
     }
+
 }
