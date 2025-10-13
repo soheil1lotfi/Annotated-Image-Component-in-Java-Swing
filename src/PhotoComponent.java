@@ -2,13 +2,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-
+import java.util.List;
 public class PhotoComponent extends JComponent {
 
     private PhotoComponentModel model;
     private PhotoComponentView view;
     private Color backgroundColor = Color.PINK;
-
 
     private boolean isDrawing = false;
     private Point lastMousePosition = null;
@@ -18,10 +17,10 @@ public class PhotoComponent extends JComponent {
         this.model = new PhotoComponentModel();
         this.view = new PhotoComponentView();
 
-        setPreferredSize(new Dimension(400, 300));
-        setMinimumSize(new Dimension(400, 300));
-        setMaximumSize(new Dimension(400, 300));
-        setSize(new Dimension(400, 300));
+//        setPreferredSize(new Dimension(400, 300));
+//        setMinimumSize(new Dimension(400, 300));
+//        setMaximumSize(new Dimension(400, 300));
+//        setSize(new Dimension(400, 300));
 
         setFocusable(true);
         
@@ -37,34 +36,81 @@ public class PhotoComponent extends JComponent {
                 if (e.getClickCount() == 2 && model.hasPhoto()) {
                     model.flip();
                     repaint();
-//                    return;
+                    return;
                 }
 
                 if (model.isFlipped() && e.getClickCount() == 1) {
                     if (isWithinPhotoBounds(e.getPoint())) {
-                        model.startNewTextBlock(e.getPoint());
+                        model.clearSelection();
 
-                        requestFocusInWindow();
+                        Object hit = model.hitTest(e.getPoint());
 
-                        repaint();
+                        if (hit != null) {
+                            // Clicked on an annotation - select it
+                            model.setSelectedAnnotation(hit);
+
+                            // If it's text, allow editing
+                            if (hit instanceof PhotoComponentModel.TextBlock) {
+                                model.setCurrentTextBlock((PhotoComponentModel.TextBlock) hit);
+                                requestFocusInWindow();
+                            }
+                            return;
+                        } else {
+                            // Clicked on empty space - create new text
+                            model.clearSelection();
+                            model.startNewTextBlock(e.getPoint());
+                            requestFocusInWindow();
+                        }
+                        return;
                     }
                 }
+                model.clearSelection();
+                model.startNewTextBlock(e.getPoint());
+                requestFocusInWindow();
+                repaint();
             }
 
             @Override
             public void mousePressed(MouseEvent e) {
-                if (model.isFlipped() && isWithinPhotoBounds(e.getPoint())) {
+//                if (model.isFlipped() && isWithinPhotoBounds(e.getPoint())) {
+//                    lastMousePosition = e.getPoint();
+//                }
+                if (!model.isFlipped() || !isWithinPhotoBounds(e.getPoint())) {
+                    return;
+                }
+
+                // Check if pressing on selected annotation
+                Object hit = model.hitTest(e.getPoint());
+
+                if (hit != null && model.isSelected(hit)) {
+                    // Start dragging the selected annotation
+                    dragStart = e.getPoint();
+                    draggedAnnotation = hit;
+                } else {
+                    // Start drawing a stroke
                     lastMousePosition = e.getPoint();
                 }
+                
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
+//                if (isDrawing) {
+//                    isDrawing = false;
+//                    model.finishCurrentStroke();
+//                    lastMousePosition = null;
+//                }
                 if (isDrawing) {
                     isDrawing = false;
                     model.finishCurrentStroke();
                     lastMousePosition = null;
                 }
+
+                // Finish dragging
+                dragStart = null;
+                draggedAnnotation = null;
+//                model.clearSelection();
+
             }
         });
     }
@@ -73,23 +119,42 @@ public class PhotoComponent extends JComponent {
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (!model.isFlipped() || lastMousePosition == null) {
+                if (!model.isFlipped() || !isWithinPhotoBounds(e.getPoint())) {
                     return;
                 }
 
-                if (!isWithinPhotoBounds(e.getPoint())) {
-                    return;
+                // Are we dragging a selected annotation?
+                if (dragStart != null && draggedAnnotation != null) {
+                    int dx = e.getX() - dragStart.x;
+                    int dy = e.getY() - dragStart.y;
+
+                    // Move the annotation
+                    if (draggedAnnotation instanceof PhotoComponentModel.Stroke) {
+                        PhotoComponentModel.Stroke stroke =
+                                (PhotoComponentModel.Stroke) draggedAnnotation;
+                        for (Point p : stroke.points) {
+                            p.translate(dx, dy);
+                        }
+                    } else if (draggedAnnotation instanceof PhotoComponentModel.TextBlock) {
+                        PhotoComponentModel.TextBlock block =
+                                (PhotoComponentModel.TextBlock) draggedAnnotation;
+                        block.position.translate(dx, dy);
+                    }
+
+                    dragStart = e.getPoint();
+                    repaint();
                 }
+                // Otherwise, draw a stroke
+                else if (lastMousePosition != null) {
+                    if (!isDrawing) {
+                        isDrawing = true;
+                        model.startNewStroke(lastMousePosition);
+                    }
 
-                if (!isDrawing) {
-                    isDrawing = true;
-                    model.startNewStroke(lastMousePosition);
+                    model.addPointToCurrentStroke(e.getPoint());
+                    lastMousePosition = e.getPoint();
+                    repaint();
                 }
-
-                model.addPointToCurrentStroke(e.getPoint());
-                lastMousePosition = e.getPoint();
-
-                repaint();
             }
         });
     }
@@ -146,14 +211,26 @@ public class PhotoComponent extends JComponent {
     public void setPhoto(BufferedImage image) {
         model.setImage(image);
 
-        if (image != null) {
-            int width = image.getWidth();
-            int height = image.getHeight();
-            setPreferredSize(new Dimension(width, height));
-            setSize(new Dimension(width, height));
-        }
+//        if (image != null) {
+//            int width = image.getWidth();
+//            int height = image.getHeight();
+//            setPreferredSize(new Dimension(width, height));
+//            setSize(new Dimension(width, height));
+//        }
 
         revalidate();
         repaint();
     }
+
+
+    private Point dragStart = null;
+    private Object draggedAnnotation = null;
+
+    public void changeAnnotationColor(){
+        Color color = GalleryWindow.annotationColor;
+//        model.setAnnotationColor(color);
+        model.changeSelectedAnnotationColor(color);
+        repaint();
+    }
+
 }

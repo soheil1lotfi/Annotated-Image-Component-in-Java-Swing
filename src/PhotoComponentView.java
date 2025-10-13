@@ -18,26 +18,10 @@ public class PhotoComponentView {
 
         BufferedImage image = model.getImage();
         if (image != null) {
-//            int x = (bounds.width - image.getWidth()) / 2;
-//            int y = (bounds.height - image.getHeight()) / 2;
-//            image = image.getSubimage(x, y, image.getWidth() - 12, image.getHeight()-12);
-//            pen.drawImage(image, x, y, null);
 
-
-            int marginX = (int) (photoComponent.getWidth() * 0.1);
-            int marginY = (int) (photoComponent.getHeight() * 0.1);
-
-//            int imageX = marginX;
-//            int imageY = marginY;
-//            int imageWidth = photoComponent.getWidth() - (2 * marginX);
-//            int imageHeight = photoComponent.getHeight() - (2 * marginY);
-//
-//            pen.drawImage(image, imageX, imageY, imageWidth, imageHeight, null);
-
-//            int margin = 20;
-
-            int availableWidth = photoComponent.getWidth() - (2 * marginX);
-            int availableHeight = photoComponent.getHeight() - (2 * marginY);
+//           Changed from the last assignment to avoid the padding around the photo and scale it to the componant
+            int availableWidth = bounds.width;
+            int availableHeight = bounds.height;
 
             int originalWidth = image.getWidth();
             int originalHeight = image.getHeight();
@@ -49,22 +33,22 @@ public class PhotoComponentView {
             int scaledWidth = (int) (originalWidth * scale);
             int scaledHeight = (int) (originalHeight * scale);
 
-            int imageX = marginX + (availableWidth - scaledWidth) / 2;
-            int imageY = marginY + (availableHeight - scaledHeight) / 2;
+            int imageX = (availableWidth - scaledWidth) / 2;
+            int imageY = (availableHeight - scaledHeight) / 2;
 
-//            pen.drawImage(image, imageX, imageY, scaledWidth, scaledHeight, null);
 
             if (!model.isFlipped()) {
                 pen.drawImage(image, imageX, imageY, scaledWidth, scaledHeight, null);
-
             } else {
-                drawPhotoBack(pen2, model);
+                pen.drawImage(image, imageX, imageY, scaledWidth, scaledHeight, null);
+                drawPhotoBackAnnotations(pen2, model, photoComponent);
+//                drawPhotoBack(pen2, model, photoComponent);
             }
         }
     }
-    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model) {
-        int width = model.getPhotoWidth();
-        int height = model.getPhotoHeight();
+    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+        int width = photoComponent.getWidth();
+        int height = photoComponent.getHeight();
 
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
@@ -72,22 +56,30 @@ public class PhotoComponentView {
         g.setColor(Color.BLACK);
         g.drawRect(0, 0, width - 1, height - 1);
 
-        drawStrokes(g, model);
-        drawTextBlocks(g, model);
+        drawStrokes(g, model, photoComponent);
+        drawTextBlocks(g, model, photoComponent);
 
-        if (model.getCurrentTextBlock() != null &&
-                model.getCurrentTextBlock().getText().isEmpty()) {
-            drawTextCursor(g, model.getCurrentTextBlock().position);
-        }
+
     }
-    private void drawStrokes(Graphics2D g, PhotoComponentModel model) {
-        g.setColor(Color.BLACK);
+    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+//        int width = photoComponent.getWidth();
+//        int height = photoComponent.getHeight();
+//        g.setColor(Color.WHITE);
+//        g.fillRect(0, 0, width, height);
+        drawStrokes(g, model, photoComponent);
+        drawTextBlocks(g, model, photoComponent);
+    }
+
+    private void drawStrokes(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+        g.setColor(model.getAnnotationColor());
         g.setStroke(new BasicStroke(2.0f,
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND));
 
         for (PhotoComponentModel.Stroke stroke : model.getStrokes()) {
             if (stroke.points.size() < 2) continue;
+
+            g.setColor(stroke.color);
 
             Point prev = stroke.points.get(0);
             for (int i = 1; i < stroke.points.size(); i++) {
@@ -98,15 +90,58 @@ public class PhotoComponentView {
         }
     }
 
-    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model) {
-        g.setColor(Color.BLACK);
+    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+        g.setColor(model.getAnnotationColor());
         g.setFont(new Font("Arial", Font.PLAIN, 14));
         FontMetrics fm = g.getFontMetrics();
 
         for (PhotoComponentModel.TextBlock block : model.getTextBlocks()) {
-            drawTextBlockWithWrap(g, block, fm, model.getPhotoWidth());
+            g.setColor(block.color);
+            drawTextBlockWithWrap(g, block, fm, photoComponent.getWidth());
         }
     }
+
+//    private void drawTextBlockWithWrap(Graphics2D g,
+//                                       PhotoComponentModel.TextBlock block,
+//                                       FontMetrics fm,
+//                                       int maxWidth) {
+//        String text = block.getText();
+//        if (text.isEmpty()) return;
+//
+//        int startX = block.position.x;
+//        int y = block.position.y;
+//        int lineHeight = fm.getHeight();
+//        int availableWidth = maxWidth - startX;  // Calculate available space once
+//
+//        String[] words = text.split("(?<=\\s)|(?=\\s)");
+//        StringBuilder currentLine = new StringBuilder();
+//
+//        for (String word : words) {
+//            String testLine = currentLine.toString() + word;
+//            int lineWidth = fm.stringWidth(testLine);
+//
+//            // Check if the line width exceeds available space
+//            if (lineWidth > availableWidth && currentLine.length() > 0) {
+//                // Draw current line before adding the word
+//                g.drawString(currentLine.toString(), startX, y);
+//
+//                // Move to next line and start fresh with the word that didn't fit
+//                y += lineHeight;
+//                currentLine = new StringBuilder(word);
+//            } else {
+//                currentLine.append(word);
+//            }
+//
+//            if (y > block.position.y + 500) {
+//                break;
+//            }
+//        }
+//
+//        // Draw the last line
+//        if (currentLine.length() > 0 && y < block.position.y + 500) {
+//            g.drawString(currentLine.toString(), startX, y);
+//        }
+//    }
 
     private void drawTextBlockWithWrap(Graphics2D g,
                                        PhotoComponentModel.TextBlock block,
@@ -115,9 +150,10 @@ public class PhotoComponentView {
         String text = block.getText();
         if (text.isEmpty()) return;
 
-        int x = block.position.x;
+        int startX = block.position.x;
         int y = block.position.y;
         int lineHeight = fm.getHeight();
+        int availableWidth = maxWidth - startX;
 
         String[] words = text.split("(?<=\\s)|(?=\\s)");
         StringBuilder currentLine = new StringBuilder();
@@ -126,28 +162,44 @@ public class PhotoComponentView {
             String testLine = currentLine.toString() + word;
             int lineWidth = fm.stringWidth(testLine);
 
-            if (x + lineWidth > maxWidth && currentLine.length() > 0) {
-                g.drawString(currentLine.toString(), x, y);
-
+            if (lineWidth > availableWidth && currentLine.length() > 0) {
+                // Draw current line
+                g.drawString(currentLine.toString(), startX, y);
                 y += lineHeight;
-                x = 10;
                 currentLine = new StringBuilder(word);
             } else {
                 currentLine.append(word);
             }
 
-            if (y > block.position.y + 500) { // Reasonable limit
+            // Check if the current line (even just the word alone) is too long
+            while (fm.stringWidth(currentLine.toString()) > availableWidth) {
+                // Break the word character by character
+                String line = currentLine.toString();
+                int breakPoint = line.length() - 1;
+
+                // Find how many characters fit
+                while (breakPoint > 0 && fm.stringWidth(line.substring(0, breakPoint)) > availableWidth) {
+                    breakPoint--;
+                }
+
+                if (breakPoint == 0) breakPoint = 1; // Always take at least one character
+
+                // Draw what fits
+                g.drawString(line.substring(0, breakPoint) + "-", startX, y);
+                y += lineHeight;
+
+                // Keep the rest for the next line
+                currentLine = new StringBuilder(line.substring(breakPoint));
+            }
+
+            if (y > block.position.y + 500) {
                 break;
             }
         }
 
+        // Draw the last line
         if (currentLine.length() > 0 && y < block.position.y + 500) {
-            g.drawString(currentLine.toString(), x, y);
+            g.drawString(currentLine.toString(), startX, y);
         }
-    }
-
-    private void drawTextCursor(Graphics2D g, Point position) {
-        g.setColor(Color.BLACK);
-        g.drawLine(position.x, position.y - 10, position.x, position.y + 2);
     }
 }

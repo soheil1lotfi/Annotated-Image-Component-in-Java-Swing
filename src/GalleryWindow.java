@@ -17,6 +17,8 @@ public class GalleryWindow extends javax.swing.JFrame {
     public PhotoComponent photoComponent = null;
     private JPanel emptyPanel;
     private JScrollPane scrollPane;
+    public static Color annotationColor = Color.BLACK;
+
 
     public GalleryWindow() {
 
@@ -113,6 +115,25 @@ public class GalleryWindow extends javax.swing.JFrame {
 
         JMenuItem menuViewItem1 = new JRadioButtonMenuItem("Photo Viewer", true);
         JMenuItem menuViewItem2 = new JRadioButtonMenuItem("Browser");
+
+        JButton colorChooser = new JButton();
+        colorChooser.setBackground(Color.BLACK);
+
+        JLabel colorChooserLabel = new JLabel("Choose Color: ");
+        colorChooser.addActionListener(e -> {
+            JColorChooser chooser = new JColorChooser();
+            Color selectedColor = JColorChooser.showDialog(colorChooser, "Choose your color", Color.BLACK);
+            colorChooser.setBackground(selectedColor);
+
+            if (selectedColor != null) {
+                colorChooser.setBackground(selectedColor);
+                annotationColor = selectedColor;
+
+                if (photoComponent != null) {
+                    photoComponent.changeAnnotationColor();
+                }
+            }
+        });
         // I wanted a way to group the buttons so they have information of eachother's states, so I asked
         // chatgpt to see if such thing exist then went to this doc: https://www.geeksforgeeks.org/java/jradiobutton-java-swing/
         ButtonGroup GroupMenuViewItem = new ButtonGroup();
@@ -234,6 +255,9 @@ public class GalleryWindow extends javax.swing.JFrame {
 
         menuBar.add(menuFile);
         menuBar.add(menuView);
+        menuBar.add(colorChooserLabel);
+        menuBar.add(colorChooser);
+
         setJMenuBar(menuBar);
 
         add(mainPanel, BorderLayout.CENTER);
