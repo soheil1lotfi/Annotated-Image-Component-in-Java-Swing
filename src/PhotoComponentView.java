@@ -36,47 +36,58 @@ public class PhotoComponentView {
             int imageX = (availableWidth - scaledWidth) / 2;
             int imageY = (availableHeight - scaledHeight) / 2;
 
+            // Save the original transform
+            var originalTransform = pen2.getTransform();
+
+            // Apply translation to center the image
+            pen2.translate(imageX, imageY);
+
+            // Apply scaling - now everything drawn will be scaled!
+            pen2.scale(scale, scale);
 
             if (!model.isFlipped()) {
-                pen.drawImage(image, imageX, imageY, scaledWidth, scaledHeight, null);
+                // Draw image at 0,0 in the scaled coordinate system
+                pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
             } else {
-                pen.drawImage(image, imageX, imageY, scaledWidth, scaledHeight, null);
-                drawPhotoBackAnnotations(pen2, model, photoComponent);
-//                drawPhotoBack(pen2, model, photoComponent);
+                // Draw image and annotations - all automatically scaled!
+                pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
+                drawPhotoBackAnnotations(pen2, model, originalWidth);  // ← Pass original width now
             }
+
+            // Restore original transform
+            pen2.setTransform(originalTransform);
         }
     }
-    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
-        int width = photoComponent.getWidth();
-        int height = photoComponent.getHeight();
+//    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+//        int width = photoComponent.getWidth();
+//        int height = photoComponent.getHeight();
+//
+//        g.setColor(Color.WHITE);
+//        g.fillRect(0, 0, width, height);
+//
+//        g.setColor(Color.BLACK);
+//        g.drawRect(0, 0, width - 1, height - 1);
+//
+//        drawStrokes(g, model);
+//        drawTextBlocks(g, model, photoComponent);
+//    }
 
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, width, height);
-
-        g.setColor(Color.BLACK);
-        g.drawRect(0, 0, width - 1, height - 1);
-
-        drawStrokes(g, model, photoComponent);
-        drawTextBlocks(g, model, photoComponent);
-
-
-    }
-    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponentModel model, int imageWidth) {
 //        int width = photoComponent.getWidth();
 //        int height = photoComponent.getHeight();
 //        g.setColor(Color.WHITE);
 //        g.fillRect(0, 0, width, height);
-        drawStrokes(g, model, photoComponent);
-        drawTextBlocks(g, model, photoComponent);
+        drawStrokes(g, model);
+        drawTextBlocks(g, model, imageWidth);
     }
 
-    private void drawStrokes(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+    private void drawStrokes(Graphics2D g, PhotoComponentModel model) {
         g.setColor(model.getAnnotationColor());
         g.setStroke(new BasicStroke(2.0f,
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND));
 
-        for (PhotoComponentModel.Stroke stroke : model.getStrokes()) {
+        for (Stroke stroke : model.getStrokes()) {
             if (stroke.points.size() < 2) continue;
 
             g.setColor(stroke.color);
@@ -90,19 +101,19 @@ public class PhotoComponentView {
         }
     }
 
-    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
+    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model, int maxWidth) {
         g.setColor(model.getAnnotationColor());
         g.setFont(new Font("Arial", Font.PLAIN, 14));
         FontMetrics fm = g.getFontMetrics();
 
-        for (PhotoComponentModel.TextBlock block : model.getTextBlocks()) {
+        for (TextBlock block : model.getTextBlocks()) {
             g.setColor(block.color);
-            drawTextBlockWithWrap(g, block, fm, photoComponent.getWidth());
+            drawTextBlockWithWrap(g, block, fm, maxWidth);
         }
     }
 
 //    private void drawTextBlockWithWrap(Graphics2D g,
-//                                       PhotoComponentModel.TextBlock block,
+//                                       TextBlock block,
 //                                       FontMetrics fm,
 //                                       int maxWidth) {
 //        String text = block.getText();
@@ -144,7 +155,7 @@ public class PhotoComponentView {
 //    }
 
     private void drawTextBlockWithWrap(Graphics2D g,
-                                       PhotoComponentModel.TextBlock block,
+                                       TextBlock block,
                                        FontMetrics fm,
                                        int maxWidth) {
         String text = block.getText();

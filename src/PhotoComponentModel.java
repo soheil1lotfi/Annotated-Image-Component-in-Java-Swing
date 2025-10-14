@@ -68,51 +68,51 @@ public class PhotoComponentModel {
     }
 
 
-    public static class Stroke {
-        public List<Point> points = new ArrayList<>();
-        public Color color = Color.BLACK;
-
-        public void addPoint(Point p) {
-            points.add(new Point(p));
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-        public boolean isEmpty() {
-            return points.isEmpty();
-        }
-
-        public int size() {
-            return points.size();
-        }
-    }
-
-    public static class TextBlock {
-        public Point position;
-        public StringBuilder text = new StringBuilder();
-        public Color color = Color.BLACK;
-
-        public TextBlock(Point pos) {
-            this.position = new Point(pos);
-        }
-
-        public void addCharacter(char c) {
-            text.append(c);
-        }
-
-        public String getText() {
-            return text.toString();
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-
-        public boolean isEmpty() {
-            return text.length() == 0;
-        }
-    }
+//    public static class Stroke {
+//        public List<Point> points = new ArrayList<>();
+//        public Color color = Color.BLACK;
+//
+//        public void addPoint(Point p) {
+//            points.add(new Point(p));
+//        }
+//
+//        public void setColor(Color color) {
+//            this.color = color;
+//        }
+//        public boolean isEmpty() {
+//            return points.isEmpty();
+//        }
+//
+//        public int size() {
+//            return points.size();
+//        }
+//    }
+//
+//    public static class TextBlock {
+//        public Point position;
+//        public StringBuilder text = new StringBuilder();
+//        public Color color = Color.BLACK;
+//
+//        public TextBlock(Point pos) {
+//            this.position = new Point(pos);
+//        }
+//
+//        public void addCharacter(char c) {
+//            text.append(c);
+//        }
+//
+//        public String getText() {
+//            return text.toString();
+//        }
+//
+//        public void setColor(Color color) {
+//            this.color = color;
+//        }
+//
+//        public boolean isEmpty() {
+//            return text.length() == 0;
+//        }
+//    }
 
     public List<Stroke> getStrokes() {
         return strokes;
