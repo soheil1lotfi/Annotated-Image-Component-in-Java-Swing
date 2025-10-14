@@ -4,16 +4,14 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 public class PhotoComponentModel {
     private boolean isFlipped = false;
     private BufferedImage image;
-
-    public void setCurrentStroke(Stroke currentStroke) {
-        this.currentStroke = currentStroke;
-    }
 
     public void setCurrentTextBlock(TextBlock currentTextBlock) {
         this.currentTextBlock = currentTextBlock;
@@ -21,98 +19,56 @@ public class PhotoComponentModel {
 
     private Color annotationColor = Color.BLACK;
 
+    public void setAnnotationColor(Color annotationColor) {
+        this.annotationColor = annotationColor;
+    }
+
     public Color getAnnotationColor() {
         return annotationColor;
     }
 
-    public void setAnnotationColor(Color annotationColor) {
-        this.annotationColor = annotationColor;
-    }
     public void changeSelectedAnnotationColor(Color newColor) {
-        if (selectedAnnotation == null) {
-            return;
-        }
-
-        if (selectedAnnotation instanceof Stroke) {
-            ((Stroke) selectedAnnotation).setColor(newColor);
-        } else if (selectedAnnotation instanceof TextBlock) {
-            ((TextBlock) selectedAnnotation).setColor(newColor);
+        for (Object annotation : selectedAnnotations) {
+            if (annotation instanceof Stroke) {
+                ((Stroke) annotation).setColor(newColor);
+            } else if (annotation instanceof TextBlock) {
+                ((TextBlock) annotation).setColor(newColor);
+            }
         }
     }
-    private List<Stroke> strokes = new ArrayList<>();
-    private List<TextBlock> textBlocks = new ArrayList<>();
-    private Stroke currentStroke = null;
-    private TextBlock currentTextBlock = null;
-    private Object selectedAnnotation = null;
-/// //////////
+    private Set<Object> selectedAnnotations = new HashSet<>();
     public void setSelectedAnnotation(Object annotation) {
-        this.selectedAnnotation = annotation;
+        this.selectedAnnotations.clear();
+        this.selectedAnnotations.add(annotation);
     }
-
-    public Object getSelectedAnnotation() {
-        return selectedAnnotation;
+    public void addToSelection(Object annotation) {
+        this.selectedAnnotations.add(annotation);
     }
-
+    public void removeFromSelection(Object annotation) {
+        this.selectedAnnotations.remove(annotation);
+    }
+    public Set<Object> getSelectedAnnotations() {
+        return selectedAnnotations;
+    }
     public void clearSelection() {
-        this.selectedAnnotation = null;
+        this.selectedAnnotations.clear();
     }
 
     public boolean isSelected(Object annotation) {
-        return selectedAnnotation == annotation;
+        return selectedAnnotations.contains(annotation);
     }
-    /// ///////////////////
 
+    private Object selectedAnnotation = null;
+    private List<Stroke> strokes = new ArrayList<>();
+    private List<TextBlock> textBlocks = new ArrayList<>();
+    private Stroke currentStroke = null;
+
+    private TextBlock currentTextBlock = null;
 
     public PhotoComponentModel() {
         this.image = null;
     }
 
-
-//    public static class Stroke {
-//        public List<Point> points = new ArrayList<>();
-//        public Color color = Color.BLACK;
-//
-//        public void addPoint(Point p) {
-//            points.add(new Point(p));
-//        }
-//
-//        public void setColor(Color color) {
-//            this.color = color;
-//        }
-//        public boolean isEmpty() {
-//            return points.isEmpty();
-//        }
-//
-//        public int size() {
-//            return points.size();
-//        }
-//    }
-//
-//    public static class TextBlock {
-//        public Point position;
-//        public StringBuilder text = new StringBuilder();
-//        public Color color = Color.BLACK;
-//
-//        public TextBlock(Point pos) {
-//            this.position = new Point(pos);
-//        }
-//
-//        public void addCharacter(char c) {
-//            text.append(c);
-//        }
-//
-//        public String getText() {
-//            return text.toString();
-//        }
-//
-//        public void setColor(Color color) {
-//            this.color = color;
-//        }
-//
-//        public boolean isEmpty() {
-//            return text.length() == 0;
-//        }
-//    }
 
     public List<Stroke> getStrokes() {
         return strokes;
@@ -123,7 +79,6 @@ public class PhotoComponentModel {
         currentStroke.color = annotationColor;
         currentStroke.addPoint(startPoint);
         strokes.add(currentStroke);
-
     }
 
     public void addPointToCurrentStroke(Point p) {
@@ -197,22 +152,26 @@ public class PhotoComponentModel {
     }
 
 
-    public Object hitTest(Point p) {
-        // Check text blocks first
+    public Object hitTest(Point p, FontMetrics fm) {
+
         for (TextBlock block : textBlocks) {
-            int textWidth = block.text.length() * 8;  // rough estimate
+            String text = block.getText();
+            if (text.isEmpty()) continue;
+            int textWidth = fm.stringWidth(text);
+            int textHeight = fm.getHeight();
+
             if (p.x >= block.position.x &&
                     p.x <= block.position.x + textWidth &&
-                    p.y >= block.position.y - 20 &&
+                    p.y >= block.position.y - textHeight &&
                     p.y <= block.position.y) {
                 return block;
             }
         }
 
-        // Check strokes - see if click is near any stroke point
         for (Stroke stroke : strokes) {
             for (Point sp : stroke.points) {
-                if (p.distance(sp) < 30) {  // 20 pixels
+                // 20 pixels
+                if (p.distance(sp) < 20) {
                     return stroke;
                 }
             }

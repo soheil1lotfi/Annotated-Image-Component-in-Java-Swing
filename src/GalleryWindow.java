@@ -128,6 +128,7 @@ public class GalleryWindow extends javax.swing.JFrame {
             if (selectedColor != null) {
                 colorChooser.setBackground(selectedColor);
                 annotationColor = selectedColor;
+                photoComponent.setAnnotationCanvasWide(selectedColor);
 
                 if (photoComponent != null) {
                     photoComponent.changeAnnotationColor();

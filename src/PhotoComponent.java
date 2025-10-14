@@ -39,37 +39,52 @@ public class PhotoComponent extends JComponent {
                     return;
                 }
 
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());  // ← Transform!
+                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
                 if (model.isFlipped() && e.getClickCount() == 1) {
-
                     if (isWithinPhotoBounds(imagePoint)) {
-                        model.clearSelection();
-
-                        Object hit = model.hitTest(imagePoint);
+                        FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, 20));
+                        Object hit = model.hitTest(imagePoint, fm);
 
                         if (hit != null) {
-                            // Clicked on an annotation - select it
-                            model.setSelectedAnnotation(hit);
+                            // Shift key enables multi-selection
+                            if (e.isShiftDown()) {
+                                // Toggle selection
+                                if (model.isSelected(hit)) {
+                                    model.removeFromSelection(hit);
+                                } else {
+                                    model.addToSelection(hit);
+                                }
+                            } else {
+                                // Normal click - select only this one
+                                model.clearSelection();
+                                model.setSelectedAnnotation(hit);
+                            }
 
-                            // If it's text, allow editing
-                            if (hit instanceof TextBlock) {
+                            // If it's text, allow editing (only if single selection)
+                            if (hit instanceof TextBlock && model.getSelectedAnnotations().size() == 1) {
                                 model.setCurrentTextBlock((TextBlock) hit);
                                 requestFocusInWindow();
                             }
+                            repaint();
                             return;
                         } else {
-                            // Clicked on empty space - create new text
-                            model.clearSelection();
+                            // Clicked on empty space
+                            if (!e.isShiftDown()) {
+                                model.clearSelection();
+                            }
                             model.startNewTextBlock(imagePoint);
                             requestFocusInWindow();
+                            repaint();
+                            return;
                         }
-                        return;
-                    }
-                    else {
+                    } else {
                         return;
                     }
                 }
-                model.clearSelection();
+
+                if (!e.isShiftDown()) {
+                    model.clearSelection();
+                }
                 model.startNewTextBlock(imagePoint);
                 requestFocusInWindow();
                 repaint();
@@ -77,30 +92,24 @@ public class PhotoComponent extends JComponent {
 
             @Override
             public void mousePressed(MouseEvent e) {
-//                if (model.isFlipped() && isWithinPhotoBounds(e.getPoint())) {
-//                    lastMousePosition = e.getPoint();
-//                }
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());  // ← Transform!
+                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
                 if (!model.isFlipped() || !isWithinPhotoBounds(imagePoint)) {
                     return;
                 }
-                if (!isWithinPhotoBounds(imagePoint)) {
-                    return;
-                }
+                FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, 20));
 
-                // Check if pressing on selected annotation
-                Object hit = model.hitTest(imagePoint);
+                Object hit = model.hitTest(imagePoint, fm);
 
                 if (hit != null && model.isSelected(hit)) {
-                    // Start dragging the selected annotation
+                    // Start dragging all selected annotations
                     dragStart = imagePoint;
-                    draggedAnnotation = hit;
+                    draggedAnnotation = hit;  // Keep for reference
                 } else {
                     // Start drawing a stroke
                     lastMousePosition = imagePoint;
                 }
-                
             }
+
 
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -128,11 +137,11 @@ public class PhotoComponent extends JComponent {
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (!model.isFlipped() || !isWithinPhotoBounds(e.getPoint())) {
+                if (!model.isFlipped()) {
                     return;
                 }
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
 
+                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
 
                 if (!isWithinPhotoBounds(imagePoint)) {
                     if (isDrawing) {
@@ -140,34 +149,31 @@ public class PhotoComponent extends JComponent {
                     }
                     return;
                 }
-                // Are we dragging a selected annotation?
+
                 if (dragStart != null && draggedAnnotation != null) {
                     int dx = imagePoint.x - dragStart.x;
                     int dy = imagePoint.y - dragStart.y;
 
-                    // Move the annotation
-                    if (draggedAnnotation instanceof Stroke) {
-                        Stroke stroke =
-                                (Stroke) draggedAnnotation;
-                        for (Point p : stroke.points) {
-                            p.translate(dx, dy);
+                    for (Object annotation : model.getSelectedAnnotations()) {
+                        if (annotation instanceof Stroke) {
+                            Stroke stroke = (Stroke) annotation;
+                            for (Point p : stroke.points) {
+                                p.translate(dx, dy);
+                            }
+                        } else if (annotation instanceof TextBlock) {
+                            TextBlock block = (TextBlock) annotation;
+                            block.position.translate(dx, dy);
                         }
-                    } else if (draggedAnnotation instanceof TextBlock) {
-                        TextBlock block =
-                                (TextBlock) draggedAnnotation;
-                        block.position.translate(dx, dy);
                     }
 
                     dragStart = imagePoint;
                     repaint();
                 }
-                // Otherwise, draw a stroke
                 else if (lastMousePosition != null) {
                     if (!isDrawing) {
                         isDrawing = true;
                         model.startNewStroke(lastMousePosition);
                     }
-
                     model.addPointToCurrentStroke(imagePoint);
                     lastMousePosition = imagePoint;
                     repaint();
@@ -228,17 +234,13 @@ public class PhotoComponent extends JComponent {
     public void setPhoto(BufferedImage image) {
         model.setImage(image);
 
-//        if (image != null) {
-//            int width = image.getWidth();
-//            int height = image.getHeight();
-//            setPreferredSize(new Dimension(width, height));
-//            setSize(new Dimension(width, height));
-//        }
-
         revalidate();
         repaint();
     }
 
+    public void setAnnotationCanvasWide (Color annotationColor) {
+        model.setAnnotationColor(annotationColor);
+    }
 
     private Point dragStart = null;
     private Object draggedAnnotation = null;
@@ -255,7 +257,7 @@ public class PhotoComponent extends JComponent {
             return mousePoint;
         }
 
-        // Calculate the same scaling as in the view
+        // calculatin the same scaling as view
         int availableWidth = getWidth();
         int availableHeight = getHeight();
 
@@ -272,7 +274,7 @@ public class PhotoComponent extends JComponent {
         int imageX = (availableWidth - scaledWidth) / 2;
         int imageY = (availableHeight - scaledHeight) / 2;
 
-        // Transform: (mousePoint - translation) / scale
+        //(mousePoint - translation) / scale
         int transformedX = (int) ((mousePoint.x - imageX) / scale);
         int transformedY = (int) ((mousePoint.y - imageY) / scale);
 
