@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 
 public class PhotoComponentView {
@@ -46,12 +47,14 @@ public class PhotoComponentView {
                 pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
             } else {
                 pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
-                drawPhotoBackAnnotations(pen2, model, originalWidth);
+                drawPhotoBackAnnotations(pen2, photoComponent, originalWidth);
             }
 
             pen2.setTransform(originalTransform);
         }
     }
+
+//  From the last assignment. I let it be here for now :)
 //    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
 //        int width = photoComponent.getWidth();
 //        int height = photoComponent.getHeight();
@@ -66,41 +69,54 @@ public class PhotoComponentView {
 //        drawTextBlocks(g, model, photoComponent);
 //    }
 
-    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponentModel model, int imageWidth) {
-        drawStrokes(g, model);
-        drawTextBlocks(g, model, imageWidth);
-    }
-
-    private void drawStrokes(Graphics2D g, PhotoComponentModel model) {
-        g.setColor(model.getAnnotationColor());
-        g.setStroke(new BasicStroke(6.0f,
-                BasicStroke.CAP_ROUND,
-                BasicStroke.JOIN_ROUND));
+    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponent photoComponent, int imageWidth) {
+//        drawStrokes(g, photoComponent);
+//        drawTextBlocks(g, photoComponent, imageWidth);
+        var model = photoComponent.getModel();
+        FontMetrics fm = g.getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
 
         for (Stroke stroke : model.getStrokes()) {
-            if (stroke.points.size() < 2) continue;
-
-            g.setColor(stroke.color);
-
-            Point prev = stroke.points.get(0);
-            for (int i = 1; i < stroke.points.size(); i++) {
-                Point curr = stroke.points.get(i);
-                g.drawLine(prev.x, prev.y, curr.x, curr.y);
-                prev = curr;
-            }
+            stroke.draw(g);
         }
-    }
-
-    private void drawTextBlocks(Graphics2D g, PhotoComponentModel model, int maxWidth) {
-        g.setColor(model.getAnnotationColor());
-        g.setFont(new Font("Arial", Font.PLAIN, 20));
-        FontMetrics fm = g.getFontMetrics();
 
         for (TextBlock block : model.getTextBlocks()) {
-            g.setColor(block.color);
-            drawTextBlockWithWrap(g, block, fm, maxWidth);
+            block.draw(g, fm, imageWidth);
         }
     }
+//
+//    private void drawStrokes(Graphics2D g, PhotoComponent photoComponent) {
+//        var model = photoComponent.getModel();
+//        g.setColor(model.getAnnotationColor());
+//        g.setStroke(new BasicStroke(model.getSTROKE_WIDTH(),
+//                BasicStroke.CAP_ROUND,
+//                BasicStroke.JOIN_ROUND));
+//
+//        for (Stroke stroke : model.getStrokes()) {
+//            if (stroke.points.size() < 2) continue;
+//
+//            g.setColor(stroke.color);
+//
+//            Point prev = stroke.points.get(0);
+//            for (int i = 1; i < stroke.points.size(); i++) {
+//                Point curr = stroke.points.get(i);
+//                g.drawLine(prev.x, prev.y, curr.x, curr.y);
+//                prev = curr;
+//            }
+//        }
+//    }
+//
+//    private void drawTextBlocks(Graphics2D g, PhotoComponent photoComponent, int maxWidth) {
+//        var model = photoComponent.getModel();
+//
+//        g.setColor(model.getAnnotationColor());
+//        g.setFont(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
+//        FontMetrics fm = g.getFontMetrics();
+//
+//        for (TextBlock block : model.getTextBlocks()) {
+//            g.setColor(block.color);
+//            drawTextBlockWithWrap(g, block, fm, maxWidth);
+//        }
+//    }
 
 
     private void drawTextBlockWithWrap(Graphics2D g,
@@ -110,8 +126,8 @@ public class PhotoComponentView {
         String text = block.getText();
         if (text.isEmpty()) return;
 
-        int startX = block.position.x;
-        int y = block.position.y;
+        int startX = block.getPosition().x;
+        int y = block.getPosition().y;
         int lineHeight = fm.getHeight();
         int availableWidth = maxWidth - startX;
 
@@ -146,13 +162,45 @@ public class PhotoComponentView {
                 currentLine = new StringBuilder(line.substring(breakPoint));
             }
 
-            if (y > block.position.y + 500) {
+            if (y > block.getPosition().y + 500) {
                 break;
             }
         }
 
-        if (currentLine.length() > 0 && y < block.position.y + 500) {
+        if (currentLine.length() > 0 && y < block.getPosition().y + 500) {
             g.drawString(currentLine.toString(), startX, y);
         }
     }
+
+    public void installUI(PhotoComponent component) {
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                component.handleMouseClicked(event);
+            }
+            @Override
+            public void mousePressed(MouseEvent event) {
+                component.handleMousePressed(event);
+            }
+            @Override
+            public void mouseReleased(MouseEvent event) {
+                component.handleMouseReleased(event);
+            }
+        });
+        component.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent event) {
+                component.handleMouseDragged(event);
+            }
+        });
+
+        component.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent event) {
+                component.handleKeyTyped(event);
+            }
+        });
+
+    }
+
 }

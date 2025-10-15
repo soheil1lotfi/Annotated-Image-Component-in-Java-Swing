@@ -6,7 +6,7 @@ public class Main {
         var GalleryWindow = new GalleryWindow();
         GalleryWindow.setVisible(true);
 
-        var window = new JFrame("Window");
+//        var window = new JFrame("Window");
 //        var photoComponent = new PhotoComponent("assets/Touch_ID_Logo.svg.png");
 
 

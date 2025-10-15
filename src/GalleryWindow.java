@@ -13,16 +13,12 @@ public class GalleryWindow extends javax.swing.JFrame {
     // I had an idea to put a border around the panel to see if it reacts correctly to resizes and checked the how-to of
     // making borders here: https://docs.oracle.com/javase/tutorial/uiswing/components/border.html
     private final Border blueline = BorderFactory.createLineBorder(Color.blue);
-
     public PhotoComponent photoComponent = null;
     private JPanel emptyPanel;
     private JScrollPane scrollPane;
-    public static Color annotationColor = Color.BLACK;
-
+    public Color annotationColor = Color.BLACK;
 
     public GalleryWindow() {
-
-//        var mainWindow = new JFrame("Gallery");
         super("Gallery");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize( 800, 600);
@@ -34,9 +30,8 @@ public class GalleryWindow extends javax.swing.JFrame {
         addTabs();
         addMenu();
         addCenterPanel();
-
-
     }
+
     private void initializeComponents() {
         emptyPanel = new JPanel();
         emptyPanel.setBorder(blueline);
@@ -123,18 +118,18 @@ public class GalleryWindow extends javax.swing.JFrame {
         colorChooser.addActionListener(e -> {
             JColorChooser chooser = new JColorChooser();
             Color selectedColor = JColorChooser.showDialog(colorChooser, "Choose your color", Color.BLACK);
-            colorChooser.setBackground(selectedColor);
 
             if (selectedColor != null) {
                 colorChooser.setBackground(selectedColor);
                 annotationColor = selectedColor;
-                photoComponent.setAnnotationCanvasWide(selectedColor);
 
                 if (photoComponent != null) {
-                    photoComponent.changeAnnotationColor();
+                    photoComponent.setAnnotationCanvasWide(selectedColor);
+                    photoComponent.changeAnnotationColor(selectedColor);
                 }
             }
         });
+
         // I wanted a way to group the buttons so they have information of eachother's states, so I asked
         // chatgpt to see if such thing exist then went to this doc: https://www.geeksforgeeks.org/java/jradiobutton-java-swing/
         ButtonGroup GroupMenuViewItem = new ButtonGroup();
@@ -242,28 +237,19 @@ public class GalleryWindow extends javax.swing.JFrame {
             }
         });
 
-
-
-        ButtonGroup GroupMenuFileItem = new ButtonGroup();
-        GroupMenuFileItem.add(menuFileItem1);
-        GroupMenuFileItem.add(menuFileItem2);
-        GroupMenuFileItem.add(menuFileItem3);
-
-
         menuFile.add(menuFileItem1);
         menuFile.add(menuFileItem2);
         menuFile.add(menuFileItem3);
 
         menuBar.add(menuFile);
         menuBar.add(menuView);
+        menuBar.add(Box.createHorizontalStrut(16));
         menuBar.add(colorChooserLabel);
         menuBar.add(colorChooser);
 
         setJMenuBar(menuBar);
 
         add(mainPanel, BorderLayout.CENTER);
-
-
     }
 
 }

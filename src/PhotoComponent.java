@@ -2,207 +2,168 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.List;
 public class PhotoComponent extends JComponent {
 
     private PhotoComponentModel model;
     private PhotoComponentView view;
-    private Color backgroundColor = Color.PINK;
-
+    private Color backgroundColor = Color.WHITE;
     private boolean isDrawing = false;
     private Point lastMousePosition = null;
-
+    private Point dragStart = null;
+    private Object draggedAnnotation = null;
 
     public PhotoComponent() {
         this.model = new PhotoComponentModel();
         this.view = new PhotoComponentView();
 
-//        setPreferredSize(new Dimension(400, 300));
-//        setMinimumSize(new Dimension(400, 300));
-//        setMaximumSize(new Dimension(400, 300));
-//        setSize(new Dimension(400, 300));
-
         setFocusable(true);
         
-        setupMouseListeners();
-        setupMouseMotionListeners();
-        setupKeyboardListeners();
+        view.installUI(this);
     }
 
-    private void setupMouseListeners() {
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && model.hasPhoto()) {
-                    model.flip();
-                    repaint();
-                    return;
-                }
+    public void handleMouseClicked(MouseEvent e) {
+        if (e.getClickCount() == 2 && model.hasPhoto()) {
+            model.flip();
+            repaint();
+            return;
+        }
 
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
-                if (model.isFlipped() && e.getClickCount() == 1) {
-                    if (isWithinPhotoBounds(imagePoint)) {
-                        FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, 20));
-                        Object hit = model.hitTest(imagePoint, fm);
-
-                        if (hit != null) {
-                            // Shift key enables multi-selection
-                            if (e.isShiftDown()) {
-                                // Toggle selection
-                                if (model.isSelected(hit)) {
-                                    model.removeFromSelection(hit);
-                                } else {
-                                    model.addToSelection(hit);
-                                }
-                            } else {
-                                // Normal click - select only this one
-                                model.clearSelection();
-                                model.setSelectedAnnotation(hit);
-                            }
-
-                            // If it's text, allow editing (only if single selection)
-                            if (hit instanceof TextBlock && model.getSelectedAnnotations().size() == 1) {
-                                model.setCurrentTextBlock((TextBlock) hit);
-                                requestFocusInWindow();
-                            }
-                            repaint();
-                            return;
-                        } else {
-                            // Clicked on empty space
-                            if (!e.isShiftDown()) {
-                                model.clearSelection();
-                            }
-                            model.startNewTextBlock(imagePoint);
-                            requestFocusInWindow();
-                            repaint();
-                            return;
-                        }
-                    } else {
-                        return;
-                    }
-                }
-
-                if (!e.isShiftDown()) {
-                    model.clearSelection();
-                }
-                model.startNewTextBlock(imagePoint);
-                requestFocusInWindow();
-                repaint();
-            }
-
-            @Override
-            public void mousePressed(MouseEvent e) {
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
-                if (!model.isFlipped() || !isWithinPhotoBounds(imagePoint)) {
-                    return;
-                }
-                FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, 20));
-
+        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
+        if (model.isFlipped() && e.getClickCount() == 1) {
+            if (isWithinPhotoBounds(imagePoint)) {
+                FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
                 Object hit = model.hitTest(imagePoint, fm);
 
-                if (hit != null && model.isSelected(hit)) {
-                    // Start dragging all selected annotations
-                    dragStart = imagePoint;
-                    draggedAnnotation = hit;  // Keep for reference
-                } else {
-                    // Start drawing a stroke
-                    lastMousePosition = imagePoint;
-                }
-            }
-
-
-            @Override
-            public void mouseReleased(MouseEvent e) {
-//                if (isDrawing) {
-//                    isDrawing = false;
-//                    model.finishCurrentStroke();
-//                    lastMousePosition = null;
-//                }
-                if (isDrawing) {
-                    isDrawing = false;
-                    model.finishCurrentStroke();
-                    lastMousePosition = null;
-                }
-
-                // Finish dragging
-                dragStart = null;
-                draggedAnnotation = null;
-//                model.clearSelection();
-
-            }
-        });
-    }
-
-    private void setupMouseMotionListeners() {
-        addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                if (!model.isFlipped()) {
-                    return;
-                }
-
-                Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
-
-                if (!isWithinPhotoBounds(imagePoint)) {
-                    if (isDrawing) {
-                        isDrawing = false;
-                    }
-                    return;
-                }
-
-                if (dragStart != null && draggedAnnotation != null) {
-                    int dx = imagePoint.x - dragStart.x;
-                    int dy = imagePoint.y - dragStart.y;
-
-                    for (Object annotation : model.getSelectedAnnotations()) {
-                        if (annotation instanceof Stroke) {
-                            Stroke stroke = (Stroke) annotation;
-                            for (Point p : stroke.points) {
-                                p.translate(dx, dy);
-                            }
-                        } else if (annotation instanceof TextBlock) {
-                            TextBlock block = (TextBlock) annotation;
-                            block.position.translate(dx, dy);
+                if (hit != null) {
+                    if (e.isShiftDown()) {
+                        if (model.isSelected(hit)) {
+                            model.removeFromSelection(hit);
+                        } else {
+                            model.addToSelection(hit);
                         }
+                    } else {
+                        model.clearSelection();
+                        model.setSelectedAnnotation(hit);
                     }
 
-                    dragStart = imagePoint;
-                    repaint();
-                }
-                else if (lastMousePosition != null) {
-                    if (!isDrawing) {
-                        isDrawing = true;
-                        model.startNewStroke(lastMousePosition);
+                    if (hit instanceof TextBlock && model.getSelectedAnnotations().size() == 1) {
+                        model.setCurrentTextBlock((TextBlock) hit);
+                        requestFocusInWindow();
                     }
-                    model.addPointToCurrentStroke(imagePoint);
-                    lastMousePosition = imagePoint;
                     repaint();
+                    return;
+                } else {
+                    if (!e.isShiftDown()) {
+                        model.clearSelection();
+
+                    }
+                    model.startNewTextBlock(imagePoint);
+                    requestFocusInWindow();
+                    repaint();
+                    return;
                 }
+            } else {
+                return;
             }
-        });
+        }
+
+        if (!e.isShiftDown()) {
+            model.clearSelection();
+        }
+        model.startNewTextBlock(imagePoint);
+        requestFocusInWindow();
+        repaint();
     }
 
-    private void setupKeyboardListeners() {
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                if (!model.isFlipped() || model.getCurrentTextBlock() == null) {
-                    return;
-                }
+    public void handleMousePressed(MouseEvent e) {
+        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
+        if (!model.isFlipped() || !isWithinPhotoBounds(imagePoint)) {
+            return;
+        }
+        FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
 
-                char c = e.getKeyChar();
+        Object hit = model.hitTest(imagePoint, fm);
 
-                if (Character.isISOControl(c)) {
-                    if (c == '\n' || c == '\r') {
-                        model.addCharacterToCurrentTextBlock(' ');
-                    }
-                    return;
-                }
+        if (hit != null && model.isSelected(hit)) {
+            dragStart = imagePoint;
+            draggedAnnotation = hit;
+        } else {
+            model.clearSelection();
+            lastMousePosition = imagePoint;
+            repaint();
+        }
+    }
 
-                model.addCharacterToCurrentTextBlock(c);
-                repaint();
+    public void handleMouseReleased(MouseEvent e) {
+        if (isDrawing) {
+            isDrawing = false;
+            model.finishCurrentStroke();
+            lastMousePosition = null;
+        }
+
+        dragStart = null;
+        draggedAnnotation = null;
+    }
+
+    public void handleMouseDragged(MouseEvent e) {
+        if (!model.isFlipped()) {
+            return;
+        }
+
+        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
+
+        if (!isWithinPhotoBounds(imagePoint)) {
+            if (isDrawing) {
+                isDrawing = false;
             }
-        });
+            return;
+        }
+
+        if (dragStart != null && draggedAnnotation != null) {
+            int dx = imagePoint.x - dragStart.x;
+            int dy = imagePoint.y - dragStart.y;
+
+            for (Object annotation : model.getSelectedAnnotations()) {
+                if (annotation instanceof Stroke) {
+                    Stroke stroke = (Stroke) annotation;
+                    for (Point p : stroke.getPoints()) {
+                        p.translate(dx, dy);
+                    }
+                } else if (annotation instanceof TextBlock) {
+                    TextBlock block = (TextBlock) annotation;
+                    block.getPosition().translate(dx, dy);
+                }
+            }
+
+            dragStart = imagePoint;
+            repaint();
+        } else if (lastMousePosition != null) {
+            if (!isDrawing) {
+                isDrawing = true;
+                model.startNewStroke(lastMousePosition);
+            }
+            model.addPointToCurrentStroke(imagePoint);
+            lastMousePosition = imagePoint;
+            repaint();
+        }
+    }
+
+    public void handleKeyTyped(KeyEvent e) {
+        if (!model.isFlipped() || model.getCurrentTextBlock() == null) {
+            return;
+        }
+
+        char c = e.getKeyChar();
+
+        if (Character.isISOControl(c)) {
+            if (c == '\n' || c == '\r') {
+                model.addCharacterToCurrentTextBlock(' ');
+            }
+            return;
+        }
+
+        model.addCharacterToCurrentTextBlock(c);
+        repaint();
     }
 
     private boolean isWithinPhotoBounds(Point p) {
@@ -215,7 +176,6 @@ public class PhotoComponent extends JComponent {
 
         return p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
     }
-
 
     public Color getBackgroundColor() {
         return backgroundColor;
@@ -233,7 +193,6 @@ public class PhotoComponent extends JComponent {
 
     public void setPhoto(BufferedImage image) {
         model.setImage(image);
-
         revalidate();
         repaint();
     }
@@ -242,12 +201,7 @@ public class PhotoComponent extends JComponent {
         model.setAnnotationColor(annotationColor);
     }
 
-    private Point dragStart = null;
-    private Object draggedAnnotation = null;
-
-    public void changeAnnotationColor(){
-        Color color = GalleryWindow.annotationColor;
-//        model.setAnnotationColor(color);
+    public void changeAnnotationColor(Color color){
         model.changeSelectedAnnotationColor(color);
         repaint();
     }

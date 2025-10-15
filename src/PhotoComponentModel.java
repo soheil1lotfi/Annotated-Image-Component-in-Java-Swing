@@ -12,12 +12,36 @@ import java.util.Set;
 public class PhotoComponentModel {
     private boolean isFlipped = false;
     private BufferedImage image;
+    private Color annotationColor = Color.BLACK;
+    private Object selectedAnnotation = null;
+    private List<Stroke> strokes = new ArrayList<>();
+    private List<TextBlock> textBlocks = new ArrayList<>();
+    private Stroke currentStroke = null;
+    private TextBlock currentTextBlock = null;
+    private final int HIT_TEST_THRESHOLD = 25;
+    private final float STROKE_WIDTH = 6.0f;
+    private final int FONT_SIZE = 20;
+    private Set<Object> selectedAnnotations = new HashSet<>();
+
+    public int getHIT_TEST_THRESHOLD() {
+        return HIT_TEST_THRESHOLD;
+    }
+
+    public float getSTROKE_WIDTH() {
+        return STROKE_WIDTH;
+    }
+
+    public int getFONT_SIZE() {
+        return FONT_SIZE;
+    }
+
+    public Object getSelectedAnnotation() {
+        return selectedAnnotation;
+    }
 
     public void setCurrentTextBlock(TextBlock currentTextBlock) {
         this.currentTextBlock = currentTextBlock;
     }
-
-    private Color annotationColor = Color.BLACK;
 
     public void setAnnotationColor(Color annotationColor) {
         this.annotationColor = annotationColor;
@@ -36,20 +60,24 @@ public class PhotoComponentModel {
             }
         }
     }
-    private Set<Object> selectedAnnotations = new HashSet<>();
+
     public void setSelectedAnnotation(Object annotation) {
         this.selectedAnnotations.clear();
         this.selectedAnnotations.add(annotation);
     }
+
     public void addToSelection(Object annotation) {
         this.selectedAnnotations.add(annotation);
     }
+
     public void removeFromSelection(Object annotation) {
         this.selectedAnnotations.remove(annotation);
     }
+
     public Set<Object> getSelectedAnnotations() {
         return selectedAnnotations;
     }
+
     public void clearSelection() {
         this.selectedAnnotations.clear();
     }
@@ -58,17 +86,9 @@ public class PhotoComponentModel {
         return selectedAnnotations.contains(annotation);
     }
 
-    private Object selectedAnnotation = null;
-    private List<Stroke> strokes = new ArrayList<>();
-    private List<TextBlock> textBlocks = new ArrayList<>();
-    private Stroke currentStroke = null;
-
-    private TextBlock currentTextBlock = null;
-
     public PhotoComponentModel() {
         this.image = null;
     }
-
 
     public List<Stroke> getStrokes() {
         return strokes;
@@ -76,7 +96,7 @@ public class PhotoComponentModel {
 
     public void startNewStroke(Point startPoint) {
         currentStroke = new Stroke();
-        currentStroke.color = annotationColor;
+        currentStroke.setColor(annotationColor);
         currentStroke.addPoint(startPoint);
         strokes.add(currentStroke);
     }
@@ -91,14 +111,13 @@ public class PhotoComponentModel {
         currentStroke = null;
     }
 
-
     public List<TextBlock> getTextBlocks() {
         return textBlocks;
     }
 
     public void startNewTextBlock(Point position) {
         currentTextBlock = new TextBlock(position);
-        currentTextBlock.color = annotationColor;
+        currentTextBlock.setColor(annotationColor);
         textBlocks.add(currentTextBlock);
     }
 
@@ -111,11 +130,6 @@ public class PhotoComponentModel {
     public TextBlock getCurrentTextBlock() {
         return currentTextBlock;
     }
-
-//    TODO for editing or backspace
-//    public void setCurrentTextBlock(TextBlock block) {
-//        this.currentTextBlock = block;
-//    }
 
     public BufferedImage getImage() {
         return image;
@@ -147,10 +161,10 @@ public class PhotoComponentModel {
     public int getPhotoWidth() {
         return image != null ? image.getWidth() : 0;
     }
+
     public int getPhotoHeight() {
         return image != null ? image.getHeight() : 0;
     }
-
 
     public Object hitTest(Point p, FontMetrics fm) {
 
@@ -160,18 +174,17 @@ public class PhotoComponentModel {
             int textWidth = fm.stringWidth(text);
             int textHeight = fm.getHeight();
 
-            if (p.x >= block.position.x &&
-                    p.x <= block.position.x + textWidth &&
-                    p.y >= block.position.y - textHeight &&
-                    p.y <= block.position.y) {
+            if (p.x >= block.getPosition().x &&
+                    p.x <= block.getPosition().x + textWidth &&
+                    p.y >= block.getPosition().y - textHeight &&
+                    p.y <= block.getPosition().y) {
                 return block;
             }
         }
 
         for (Stroke stroke : strokes) {
-            for (Point sp : stroke.points) {
-                // 20 pixels
-                if (p.distance(sp) < 20) {
+            for (Point sp : stroke.getPoints()) {
+                if (p.distance(sp) < this.getHIT_TEST_THRESHOLD()) {
                     return stroke;
                 }
             }
