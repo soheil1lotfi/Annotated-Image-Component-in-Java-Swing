@@ -13,7 +13,6 @@ public class PhotoComponentModel {
     private boolean isFlipped = false;
     private BufferedImage image;
     private Color annotationColor = Color.BLACK;
-    private Object selectedAnnotation = null;
     private List<Stroke> strokes = new ArrayList<>();
     private List<TextBlock> textBlocks = new ArrayList<>();
     private Stroke currentStroke = null;
@@ -35,9 +34,6 @@ public class PhotoComponentModel {
         return FONT_SIZE;
     }
 
-    public Object getSelectedAnnotation() {
-        return selectedAnnotation;
-    }
 
     public void setCurrentTextBlock(TextBlock currentTextBlock) {
         this.currentTextBlock = currentTextBlock;

@@ -9,10 +9,6 @@ public class TextBlock implements Drawable {
         return position;
     }
 
-    public Color getColor() {
-        return color;
-    }
-
     @Override
     public void draw(Graphics g) {
         draw(g, g.getFontMetrics(), Integer.MAX_VALUE);
@@ -25,7 +21,6 @@ public class TextBlock implements Drawable {
         Graphics2D g2 = (Graphics2D) g;
         g2.setColor(color);
 
-        // Text wrapping logic here (move from View)
         int startX = position.x;
         int y = position.y;
         int lineHeight = fm.getHeight();
@@ -72,10 +67,6 @@ public class TextBlock implements Drawable {
         if (currentLine.length() > 0 && y < this.position.y + 500) {
             g.drawString(currentLine.toString(), startX, y);
         }
-
-//        if (currentLine.length() > 0) {
-//            g2.drawString(currentLine.toString(), startX, y);
-//        }
     }
     public TextBlock(Point p) {
         this.position = new Point(p);

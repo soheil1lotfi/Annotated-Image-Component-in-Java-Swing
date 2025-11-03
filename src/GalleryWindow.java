@@ -83,7 +83,7 @@ public class GalleryWindow extends javax.swing.JFrame {
         // setting their color
         toolBar1.setBackground(Color.white);
         toolBar2.setBackground(Color.white);
-        new JButton();
+
         var groupToolBar = new ButtonGroup();
         groupToolBar.add(toolBar1);
         groupToolBar.add(toolBar2);
@@ -166,12 +166,10 @@ public class GalleryWindow extends javax.swing.JFrame {
             }
         });
 
-
-
-
         menuViewItem1.addActionListener(e -> {
             statusBarMessage("Photo viewer selected");
         });
+
         menuViewItem2.addActionListener(e -> {
             statusBarMessage("Browser viewer selected");
         });
@@ -184,15 +182,14 @@ public class GalleryWindow extends javax.swing.JFrame {
         menuFileItem2.addActionListener(e -> {
             statusBarMessage("Item Deleted");
         });
+
         menuFileItem3.addActionListener(e -> {
             statusBarMessage("Quiting the application...");
             System.exit(0);
         });
 
-
         menuFileItem1.addActionListener(e -> {
             //From the doc: https://docs.oracle.com/javase/8/docs/api/javax/swing/JFileChooser.html
-
             statusBarMessage("Browser Opened");
 
             JFileChooser chooser = new JFileChooser();
@@ -218,8 +215,8 @@ public class GalleryWindow extends javax.swing.JFrame {
                 }
             }
         });
-        menuFileItem2.addActionListener(e -> {
 
+        menuFileItem2.addActionListener(e -> {
             if (photoComponent != null) {
                 // Dialogue to confirm
                 int result = JOptionPane.showConfirmDialog(this,
