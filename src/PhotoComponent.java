@@ -151,10 +151,8 @@ public class PhotoComponent extends JComponent implements ChangeListener {
         } else if (!e.isShiftDown()) {
             model.clearSelection();
             lastMousePosition = imagePoint;
-            repaint();
         } else {
             lastMousePosition = imagePoint;
-            repaint();
         }
     }
 
