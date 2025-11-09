@@ -1,11 +1,14 @@
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-public class PhotoComponent extends JComponent {
+public class PhotoComponent extends JComponent implements ChangeListener {
 
     private PhotoComponentModel model;
     private PhotoComponentView view;
+
     private Color backgroundColor = Color.WHITE;
     private boolean isDrawing = false;
     private Point lastMousePosition = null;
@@ -16,22 +19,84 @@ public class PhotoComponent extends JComponent {
         this.model = new PhotoComponentModel();
         this.view = new PhotoComponentView();
 
-        setFocusable(true);
-        
-        view.installUI(this);
+        this.model.addChangeListener(this);
+
+        setLayout(new BorderLayout());
+        add(view, BorderLayout.CENTER);
+
+        installListeners();
+        updateView();
+    }
+
+    @Override
+    public void stateChanged(ChangeEvent e) {
+        updateView();
+    }
+
+    private void updateView() {
+        view.updateDisplay(
+                model.getImage(),
+                model.isFlipped(),
+                model.getStrokes(),
+                model.getTextBlocks(),
+                model.getSelectedAnnotations(),
+                model.getFONT_SIZE(),
+                model.getSTROKE_WIDTH()
+        );
+    }
+    private void installListeners() {
+        view.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                handleMouseClicked(e);
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                handleMousePressed(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                handleMouseReleased(e);
+            }
+        });
+
+        view.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                handleMouseDragged(e);
+            }
+        });
+
+        view.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                handleKeyTyped(e);
+            }
+        });
     }
 
     public void handleMouseClicked(MouseEvent e) {
-        if (e.getClickCount() == 2 && model.hasPhoto()) {
-            model.flip();
-            repaint();
+        if (!model.hasPhoto()) {
             return;
         }
 
-        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
+        Point imagePoint = view.transformMouseToImageCoordinates(
+                e.getPoint(),
+                model.getPhotoWidth(),
+                model.getPhotoHeight()
+        );
+
+        if (e.getClickCount() == 2) {
+            model.flip();
+            return;
+        }
+
         if (model.isFlipped() && e.getClickCount() == 1) {
             if (isWithinPhotoBounds(imagePoint)) {
-                FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
+                Font font = new Font("Arial", Font.PLAIN, model.getFONT_SIZE());
+                FontMetrics fm = view.getFontMetrics(font);
                 Object hit = model.hitTest(imagePoint, fm);
 
                 if (hit != null) {
@@ -48,47 +113,46 @@ public class PhotoComponent extends JComponent {
 
                     if (hit instanceof TextBlock && model.getSelectedAnnotations().size() == 1) {
                         model.setCurrentTextBlock((TextBlock) hit);
-                        requestFocusInWindow();
+                        view.requestFocusInWindow();
                     }
-                    repaint();
-                    return;
                 } else {
                     if (!e.isShiftDown()) {
                         model.clearSelection();
-
                     }
                     model.startNewTextBlock(imagePoint);
-                    requestFocusInWindow();
-                    repaint();
-                    return;
+                    view.requestFocusInWindow();
                 }
-            } else {
-                return;
             }
         }
-
-        if (!e.isShiftDown()) {
-            model.clearSelection();
-        }
-        model.startNewTextBlock(imagePoint);
-        requestFocusInWindow();
-        repaint();
     }
 
     public void handleMousePressed(MouseEvent e) {
-        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
-        if (!model.isFlipped() || !isWithinPhotoBounds(imagePoint)) {
+        if (!model.isFlipped() || !model.hasPhoto()) {
             return;
         }
-        FontMetrics fm = getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
 
+        Point imagePoint = view.transformMouseToImageCoordinates(
+                e.getPoint(),
+                model.getPhotoWidth(),
+                model.getPhotoHeight()
+        );
+
+        if (!isWithinPhotoBounds(imagePoint)) {
+            return;
+        }
+
+        Font font = new Font("Arial", Font.PLAIN, model.getFONT_SIZE());
+        FontMetrics fm = view.getFontMetrics(font);
         Object hit = model.hitTest(imagePoint, fm);
 
         if (hit != null && model.isSelected(hit)) {
             dragStart = imagePoint;
             draggedAnnotation = hit;
-        } else {
+        } else if (!e.isShiftDown()) {
             model.clearSelection();
+            lastMousePosition = imagePoint;
+            repaint();
+        } else {
             lastMousePosition = imagePoint;
             repaint();
         }
@@ -100,21 +164,25 @@ public class PhotoComponent extends JComponent {
             model.finishCurrentStroke();
             lastMousePosition = null;
         }
-
         dragStart = null;
         draggedAnnotation = null;
     }
 
     public void handleMouseDragged(MouseEvent e) {
-        if (!model.isFlipped()) {
+        if (!model.isFlipped() || !model.hasPhoto()) {
             return;
         }
 
-        Point imagePoint = transformMouseToImageCoordinates(e.getPoint());
+        Point imagePoint = view.transformMouseToImageCoordinates(
+                e.getPoint(),
+                model.getPhotoWidth(),
+                model.getPhotoHeight()
+        );
 
         if (!isWithinPhotoBounds(imagePoint)) {
             if (isDrawing) {
                 isDrawing = false;
+                model.finishCurrentStroke();
             }
             return;
         }
@@ -122,21 +190,8 @@ public class PhotoComponent extends JComponent {
         if (dragStart != null && draggedAnnotation != null) {
             int dx = imagePoint.x - dragStart.x;
             int dy = imagePoint.y - dragStart.y;
-
-            for (Object annotation : model.getSelectedAnnotations()) {
-                if (annotation instanceof Stroke) {
-                    Stroke stroke = (Stroke) annotation;
-                    for (Point p : stroke.getPoints()) {
-                        p.translate(dx, dy);
-                    }
-                } else if (annotation instanceof TextBlock) {
-                    TextBlock block = (TextBlock) annotation;
-                    block.getPosition().translate(dx, dy);
-                }
-            }
-
+            model.moveSelectedAnnotations(dx, dy);
             dragStart = imagePoint;
-            repaint();
         } else if (lastMousePosition != null) {
             if (!isDrawing) {
                 isDrawing = true;
@@ -144,7 +199,6 @@ public class PhotoComponent extends JComponent {
             }
             model.addPointToCurrentStroke(imagePoint);
             lastMousePosition = imagePoint;
-            repaint();
         }
     }
 
@@ -154,16 +208,13 @@ public class PhotoComponent extends JComponent {
         }
 
         char c = e.getKeyChar();
-
         if (Character.isISOControl(c)) {
             if (c == '\n' || c == '\r') {
                 model.addCharacterToCurrentTextBlock(' ');
             }
             return;
         }
-
         model.addCharacterToCurrentTextBlock(c);
-        repaint();
     }
 
     private boolean isWithinPhotoBounds(Point p) {
@@ -186,15 +237,10 @@ public class PhotoComponent extends JComponent {
         return model;
     }
 
-    @Override
-    public void paintComponent(Graphics pen) {
-        this.view.paint(pen, this);
-    }
 
     public void setPhoto(BufferedImage image) {
         model.setImage(image);
-        revalidate();
-        repaint();
+
     }
 
     public void setAnnotationCanvasWide (Color annotationColor) {
@@ -203,7 +249,6 @@ public class PhotoComponent extends JComponent {
 
     public void changeAnnotationColor(Color color){
         model.changeSelectedAnnotationColor(color);
-        repaint();
     }
 
     private Point transformMouseToImageCoordinates(Point mousePoint) {
@@ -211,7 +256,7 @@ public class PhotoComponent extends JComponent {
             return mousePoint;
         }
 
-        // calculatin the same scaling as view
+        // calculating the same scaling as view
         int availableWidth = getWidth();
         int availableHeight = getHeight();
 
@@ -234,4 +279,7 @@ public class PhotoComponent extends JComponent {
 
         return new Point(transformedX, transformedY);
     }
+
+
 }
+

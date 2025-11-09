@@ -1,10 +1,47 @@
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Set;
 
-public class PhotoComponentView {
+import static javax.swing.text.StyleConstants.setBackground;
 
-    public void paint(Graphics pen, PhotoComponent photoComponent) {
+public class PhotoComponentView extends JPanel {
+
+
+    private BufferedImage currentImage;
+    private boolean currentFlipped;
+    private ArrayList<Stroke> currentStrokes;
+    private ArrayList<TextBlock> currentTextBlocks;
+    private Set<Object> currentSelectedAnnotations;
+    private int fontSize = 20;
+    private float strokeWidth = 6.0f;
+
+    public PhotoComponentView() {
+        setFocusable(true);
+        setBackground(Color.WHITE);
+    }
+
+    public void updateDisplay(BufferedImage image,
+                              boolean isFlipped,
+                              ArrayList<Stroke> strokes,
+                              ArrayList<TextBlock> textBlocks,
+                              Set<Object> selectedAnnotations,
+                              int fontSize,
+                              float strokeWidth) {
+        this.currentImage = image;
+        this.currentFlipped = isFlipped;
+        this.currentStrokes = strokes;
+        this.currentTextBlocks = textBlocks;
+        this.currentSelectedAnnotations = selectedAnnotations;
+        this.fontSize = fontSize;
+        this.strokeWidth = strokeWidth;
+        repaint();
+    }
+
+    public void paintComponent(Graphics pen) {
+        super.paintComponent(pen);
 
         Graphics2D pen2 = (Graphics2D) pen;
         pen2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -12,20 +49,15 @@ public class PhotoComponentView {
         pen2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        var model = photoComponent.getModel();
-        pen.setColor(photoComponent.getBackgroundColor());
-        var bounds = photoComponent.getBounds();
-        pen.fillRect(0, 0, photoComponent.getWidth(), photoComponent.getHeight());
 
-        BufferedImage image = model.getImage();
-        if (image != null) {
+        if (currentImage != null) {
 
 //           Changed from the last assignment to avoid the padding around the photo and scale it to the componant
-            int availableWidth = bounds.width;
-            int availableHeight = bounds.height;
+            int availableWidth = getWidth();
+            int availableHeight = getHeight();
 
-            int originalWidth = image.getWidth();
-            int originalHeight = image.getHeight();
+            int originalWidth = currentImage.getWidth();
+            int originalHeight = currentImage.getHeight();
 
             double scaleX = (double) availableWidth / originalWidth;
             double scaleY = (double) availableHeight / originalHeight;
@@ -43,76 +75,48 @@ public class PhotoComponentView {
 
             pen2.scale(scale, scale);
 
-            if (!model.isFlipped()) {
-                pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
+            if (!currentFlipped) {
+                pen.drawImage(currentImage, 0, 0, originalWidth, originalHeight, null);
             } else {
-                pen.drawImage(image, 0, 0, originalWidth, originalHeight, null);
-                drawPhotoBackAnnotations(pen2, photoComponent, originalWidth);
+                pen.drawImage(currentImage, 0, 0, originalWidth, originalHeight, null);
+                drawPhotoBackAnnotations(pen2, originalWidth);
             }
 
             pen2.setTransform(originalTransform);
         }
     }
 
-//  From the last assignment. I let it be here for now :)
-//    private void drawPhotoBack(Graphics2D g, PhotoComponentModel model, PhotoComponent photoComponent) {
-//        int width = photoComponent.getWidth();
-//        int height = photoComponent.getHeight();
-//
-//        g.setColor(Color.WHITE);
-//        g.fillRect(0, 0, width, height);
-//
-//        g.setColor(Color.BLACK);
-//        g.drawRect(0, 0, width - 1, height - 1);
-//
-//        drawStrokes(g, model);
-//        drawTextBlocks(g, model, photoComponent);
-//    }
+    private void drawPhotoBackAnnotations(Graphics2D g, int imageWidth) {
 
-    private void drawPhotoBackAnnotations(Graphics2D g, PhotoComponent photoComponent, int imageWidth) {
-//        drawStrokes(g, photoComponent);
-//        drawTextBlocks(g, photoComponent, imageWidth);
-        var model = photoComponent.getModel();
-        FontMetrics fm = g.getFontMetrics(new Font("Arial", Font.PLAIN, model.getFONT_SIZE()));
+        FontMetrics fm = g.getFontMetrics(new Font("Arial", Font.PLAIN, fontSize));
 
-        for (Stroke stroke : model.getStrokes()) {
+        for (Stroke stroke : currentStrokes) {
             stroke.draw(g);
         }
 
-        for (TextBlock block : model.getTextBlocks()) {
+        for (TextBlock block : currentTextBlocks) {
             block.draw(g, fm, imageWidth);
         }
     }
 
-    public void installUI(PhotoComponent component) {
-        component.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent event) {
-                component.handleMouseClicked(event);
-            }
-            @Override
-            public void mousePressed(MouseEvent event) {
-                component.handleMousePressed(event);
-            }
-            @Override
-            public void mouseReleased(MouseEvent event) {
-                component.handleMouseReleased(event);
-            }
-        });
-        component.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent event) {
-                component.handleMouseDragged(event);
-            }
-        });
 
-        component.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent event) {
-                component.handleKeyTyped(event);
-            }
-        });
+    public Point transformMouseToImageCoordinates(Point mousePoint, int imageWidth, int imageHeight) {
+        int availableWidth = getWidth();
+        int availableHeight = getHeight();
 
+        double scaleX = (double) availableWidth / imageWidth;
+        double scaleY = (double) availableHeight / imageHeight;
+        double scale = Math.min(scaleX, scaleY);
+
+        int scaledWidth = (int) (imageWidth * scale);
+        int scaledHeight = (int) (imageHeight * scale);
+        int imageX = (availableWidth - scaledWidth) / 2;
+        int imageY = (availableHeight - scaledHeight) / 2;
+
+        int transformedX = (int) ((mousePoint.x - imageX) / scale);
+        int transformedY = (int) ((mousePoint.y - imageY) / scale);
+
+        return new Point(transformedX, transformedY);
     }
-
 }
+
